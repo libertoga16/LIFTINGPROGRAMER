@@ -2,15 +2,16 @@ zv\liftingprogramer\PlayerNotFoundException.class
 zv\liftingprogramer\WeatherAPI$WeatherData.class
 zv\liftingprogramer\characters\Archer.class
 zv\liftingprogramer\characters\PLAYER.class
-zv\liftingprogramer\Game$PlayerInfo.class
 zv\liftingprogramer\GameGUI$3.class
 zv\liftingprogramer\GameSaveException.class
 zv\liftingprogramer\LIFTINGPROGRAMER.class
 zv\liftingprogramer\WeatherAPI$WeatherCondition.class
 zv\liftingprogramer\characters\ACTIONS.class
 zv\liftingprogramer\GameGUI$2.class
+zv\liftingprogramer\GameGUI$5.class
 zv\liftingprogramer\characters\SWORDSMAN.class
 zv\liftingprogramer\InvalidPlayerIdException.class
+zv\liftingprogramer\PlayerInfo.class
 zv\liftingprogramer\characters\Wizard.class
 zv\liftingprogramer\BattleStartException.class
 zv\liftingprogramer\basedatos\Databaseconnector.class

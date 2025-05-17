@@ -1,11 +1,13 @@
 package zv.liftingprogramer;
 
 import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.Timer;
+import javax.swing.*;
 import zv.liftingprogramer.basedatos.Databaseconnector;
 import zv.liftingprogramer.characters.*;
 import zv.liftingprogramer.moustros.MeleeMonster;
@@ -52,7 +54,8 @@ public class Game {
         Connection conn = null;
         try {
             conn = Databaseconnector.getConnection();
-            String query = "INSERT INTO players (name, class, live, defend, attack, speed, money, level, experience) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String query = "INSERT INTO players (name, class, live, defend, attack, speed, money, level, experience, campaign_mode) " +
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
 
             stmt.setString(1, name);
@@ -93,6 +96,7 @@ public class Game {
             stmt.setDouble(7, infiniteMode ? 0.0 : 50.0);
             stmt.setDouble(8, 1.0);
             stmt.setDouble(9, 0.0);
+            stmt.setBoolean(10, !infiniteMode);
 
             int affectedRows = stmt.executeUpdate();
             
@@ -113,12 +117,10 @@ public class Game {
             } else {
                 throw new CharacterCreationException("No se pudo obtener el ID del personaje creado");
             }
-        } catch (SQLException ex) {
+        } catch (InvalidPlayerIdException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
-            throw new CharacterCreationException("Error de base de datos al crear personaje: " + ex.getMessage());
-        } catch (InvalidPlayerIdException | PlayerNotFoundException ex) {
+        } catch (PlayerNotFoundException ex) {
             Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
-            throw new CharacterCreationException("Error al cargar personaje: " + ex.getMessage());
         } finally {
             Databaseconnector.closeConnection(conn);
         }
@@ -129,9 +131,14 @@ public class Game {
             throw new BattleStartException("No hay jugador cargado");
         }
         
+        if (player.getLive() <= 0) {
+            throw new BattleStartException("¡Tu personaje está incapacitado! Descansa o usa pociones para recuperarte.");
+        }
+        
         inBattle = true;
         battleEnded = false;
         inInventory = false;
+        playerTurn = false;
         
         try {
             WeatherAPI.WeatherData weather = WeatherAPI.getCurrentWeather();
@@ -139,15 +146,25 @@ public class Game {
             gui.updateWeatherInfo(weather);
             
             currentMonster = MonsterFactory.createRandomMonster(level);
+            
             playerTurn = player.getSpeed() >= currentMonster.getSpeed();
             
-            gui.appendToTextArea("\n¡Un " + currentMonster.getName() + " nivel " + level + " aparece!");
-            gui.appendToTextArea("Condiciones climáticas: " + weather.description);
-            gui.appendToTextArea("Temperatura: " + weather.temperature + "°C");
-            gui.appendToTextArea("Humedad: " + weather.humidity + "%\n");
+            gui.appendToTextArea("\n════════ BATALLA ════════");
+            gui.appendToTextArea("¡Un " + currentMonster.getName() + " nivel " + level + " aparece!");
+            gui.appendToTextArea("Clima: " + weather.description + " (" + weather.temperature + "°C)");
+            
+            gui.updateHealthBars(
+                player.getLive(), player.getLive(), 
+                currentMonster.getLive(), currentMonster.getLive()
+            );
+            
+            gui.enableNewBattleButton(false);
+            gui.enableBattleButtons(true);
             
             updateBattleStatus();
+            
         } catch (Exception ex) {
+            inBattle = false;
             throw new BattleStartException("Error al iniciar batalla: " + ex.getMessage());
         }
     }
@@ -216,6 +233,10 @@ public class Game {
         
         currentMonster.takeDamage(damage);
         gui.appendToTextArea("Infliges " + String.format("%.1f", damage) + " de daño.");
+        gui.updateHealthBars(
+            player.getLive(), player.getLive(), 
+            currentMonster.getLive(), currentMonster.getLive()
+        );
     }
     
     private void playerDodge() {
@@ -242,6 +263,11 @@ public class Game {
         if (healAmount > 0) {
             player.live += healAmount;
             gui.appendToTextArea("Recuperas " + healAmount + " HP.");
+            gui.updatePlayerStats();
+            gui.updateHealthBars(
+                player.getLive(), player.getLive(), 
+                currentMonster.getLive(), currentMonster.getLive()
+            );
         } else {
             gui.appendToTextArea("No tienes pociones para curarte.");
         }
@@ -271,6 +297,11 @@ public class Game {
             currentMonster.takeDamage(spellDamage);
             gui.appendToTextArea("¡Hechizo poderoso! Infliges " + String.format("%.1f", spellDamage) + " de daño.");
         }
+        
+        gui.updateHealthBars(
+            player.getLive(), player.getLive(), 
+            currentMonster.getLive(), currentMonster.getLive()
+        );
     }
     
     private void monsterTurn() {
@@ -309,8 +340,13 @@ public class Game {
             }
         }
 
-        player.speed /= 1.5;
-        player.defend /= 1.5;
+        
+        
+        gui.updateHealthBars(
+            player.getLive(), player.getLive(), 
+            currentMonster.getLive(), currentMonster.getLive()
+        );
+        gui.updatePlayerStats();
         
         if (!player.isAlive()) {
             endBattle(false);
@@ -327,8 +363,8 @@ public class Game {
                 int expGained = currentMonster.getExperienceGiven();
                 double moneyGained = currentMonster.getMoneyGiven();
                 
-                gui.appendToTextArea("\n¡Has derrotado al " + currentMonster.getName() + "!");
-                gui.appendToTextArea("Ganas " + expGained + " experiencia y " + moneyGained + " monedas.");
+                gui.appendToTextArea("\n¡VICTORIA! Has derrotado al " + currentMonster.getName() + "!");
+                gui.appendToTextArea("Recompensas: +" + expGained + " EXP | +" + moneyGained + " monedas");
                 
                 player.addExperience((double) expGained);
                 player.addMoney(moneyGained);
@@ -338,7 +374,7 @@ public class Game {
                         infiniteMode ? currentWave : ((int) player.getLevel()),
                         player.getType().toUpperCase()
                     );
-                    gui.appendToTextArea("¡El monstruo soltó un " + droppedItem.name + "!");
+                    gui.appendToTextArea("¡Botín obtenido: " + droppedItem.name + " (" + droppedItem.rarity + ")!");
                     player.addItem(droppedItem);
                     addItemToInventory(player.getId(), droppedItem.id);
                 }
@@ -353,20 +389,14 @@ public class Game {
                 
                 if (infiniteMode) {
                     currentWave++;
-                    gui.appendToTextArea("\n¡Preparate para la siguiente oleada! (Oleada " + currentWave + ")");
-                    Timer timer = new Timer(2000, e -> {
-                        try {
-                            startBattle(currentWave);
-                        } catch (Exception ex) {
-                            gui.showError("Error al iniciar nueva batalla: " + ex.getMessage());
-                        }
-                    });
-                    timer.setRepeats(false);
-                    timer.start();
-                    return;
+                    gui.appendToTextArea("\n¡Oleada completada! Preparate para la oleada " + currentWave);
                 }
             } else {
-                gui.appendToTextArea("\n¡Has sido derrotado por el " + currentMonster.getName() + "!");
+                gui.appendToTextArea("\n¡DERROTA! Has sido vencido por el " + currentMonster.getName() + "!");
+                
+                player.setMoney(Math.max(0, player.getMoney() * 0.8));
+                gui.appendToTextArea("Has perdido el 20% de tu dinero actual.");
+                
                 saveBattleResult(currentMonster, "LOSE", 0, 0);
             }
             
@@ -379,6 +409,7 @@ public class Game {
             gui.updatePlayerStats();
             gui.enableBattleButtons(false);
             gui.enableNewBattleButton(true);
+            gui.updateHealthBars(0, 100, 0, 100);
             
         } catch (SQLException e) {
             gui.appendToTextArea("Error al guardar los resultados de la batalla: " + e.getMessage());
@@ -418,6 +449,7 @@ public class Game {
                 this.battleEnded = false;
                 this.inInventory = false;
                 this.currentMonster = null;
+                this.playerTurn = false;
                 
                 switch (className) {
                     case "SWORDSMAN":
@@ -447,13 +479,14 @@ public class Game {
         }
     }
     
-    public List<PlayerInfo> getAvailablePlayers() throws SQLException {
+    public List<PlayerInfo> getCampaignPlayers() throws SQLException {
         Connection conn = null;
         List<PlayerInfo> players = new ArrayList<>();
         
         try {
             conn = Databaseconnector.getConnection();
-            String query = "SELECT id, name, class, level FROM players ORDER BY name";
+            String query = "SELECT id, name, class, level, experience, money, last_played " +
+                          "FROM players WHERE campaign_mode = true ORDER BY level DESC, name";
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(query);
             
@@ -462,42 +495,16 @@ public class Game {
                     rs.getInt("id"),
                     rs.getString("name"),
                     rs.getString("class"),
-                    rs.getDouble("level")
+                    rs.getDouble("level"),
+                    rs.getDouble("experience"),
+                    rs.getDouble("money"),
+                    rs.getTimestamp("last_played")
                 ));
             }
             
             return players;
         } finally {
             Databaseconnector.closeConnection(conn);
-        }
-    }
-    
-    public static class PlayerInfo {
-        public final int id;
-        public final String name;
-        public final String characterClass;
-        public final double level;
-        
-        public PlayerInfo(int id, String name, String characterClass, double level) {
-            this.id = id;
-            this.name = name;
-            this.characterClass = characterClass;
-            this.level = level;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("%s (Nivel %.0f %s)", name, level, getClassDisplayName());
-        }
-        
-        private String getClassDisplayName() {
-            switch (characterClass) {
-                case "SWORDSMAN": return "Espadachín";
-                case "BLACKSMITH": return "Herrero";
-                case "ARCHER": return "Arquero";
-                case "WIZARD": return "Mago";
-                default: return characterClass;
-            }
         }
     }
     
@@ -607,7 +614,7 @@ public class Game {
         try {
             conn = Databaseconnector.getConnection();
             String query = "UPDATE players SET live = ?, defend = ?, attack = ?, speed = ?, "
-                    + "money = ?, level = ?, experience = ? WHERE id = ?";
+                    + "money = ?, level = ?, experience = ?, last_played = CURRENT_TIMESTAMP WHERE id = ?";
             PreparedStatement stmt = conn.prepareStatement(query);
 
             stmt.setDouble(1, player.getLive());
@@ -624,5 +631,79 @@ public class Game {
         } finally {
             Databaseconnector.closeConnection(conn);
         }
+    }
+}
+
+class PlayerInfo {
+    private final int id;
+    private final String name;
+    private final String characterClass;
+    private final double level;
+    private final double experience;
+    private final double money;
+    private final Timestamp lastPlayed;
+
+    public PlayerInfo(int id, String name, String characterClass, double level, 
+                     double experience, double money, Timestamp lastPlayed) {
+        this.id = id;
+        this.name = name;
+        this.characterClass = characterClass;
+        this.level = level;
+        this.experience = experience;
+        this.money = money;
+        this.lastPlayed = lastPlayed;
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getCharacterClass() { return characterClass; }
+    public double getLevel() { return level; }
+    public double getExperience() { return experience; }
+    public double getMoney() { return money; }
+    public Timestamp getLastPlayed() { return lastPlayed; }
+
+    public String getClassDisplayName() {
+        switch (characterClass) {
+            case "SWORDSMAN": return "Espadachín";
+            case "BLACKSMITH": return "Herrero";
+            case "ARCHER": return "Arquero";
+            case "WIZARD": return "Mago";
+            default: return characterClass;
+        }
+    }
+
+    public String getLastPlayedFormatted() {
+        if (lastPlayed == null) return "Nunca";
+        return lastPlayed.toLocalDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+    }
+
+    public int getLevelProgress() {
+        double expNeeded = level * 100;
+        return (int)((experience / expNeeded) * 100);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s (Nivel %.1f %s) - %.0f monedas", 
+               name, level, getClassDisplayName(), money);
+    }
+
+    public String toDetailedString() {
+        return String.format(
+            "<html><b>%s</b><br>" +
+            "Clase: %s<br>" +
+            "Nivel: %.1f<br>" +
+            "Experiencia: %.1f/%.1f (%d%%)<br>" +
+            "Dinero: %.0f<br>" +
+            "Última vez: %s</html>",
+            name,
+            getClassDisplayName(),
+            level,
+            experience,
+            level * 100,
+            getLevelProgress(),
+            money,
+            getLastPlayedFormatted()
+        );
     }
 }

@@ -2,6 +2,7 @@ package zv.liftingprogramer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,22 +36,25 @@ public class GameGUI {
     private JLabel weatherLabel;
     private JLabel playerStatsLabel;
     private JLabel battleStatusLabel;
+    private JProgressBar playerHealthBar;
+    private JProgressBar enemyHealthBar;
 
     private Map<String, JButton> actionButtons;
     private JComboBox<String> classSelector;
+    private JButton newBattleButton;
 
-    // Colores del tema
-    private final Color PRIMARY_COLOR = new Color(70, 130, 180); // SteelBlue
-    private final Color SECONDARY_COLOR = new Color(100, 149, 237); // CornflowerBlue
-    private final Color ACCENT_COLOR = new Color(255, 215, 0); // Gold
-    private final Color DARK_COLOR = new Color(25, 25, 112); // MidnightBlue
-    private final Color LIGHT_COLOR = new Color(240, 248, 255); // AliceBlue
+    private final Color PRIMARY_COLOR = new Color(70, 130, 180);
+    private final Color SECONDARY_COLOR = new Color(100, 149, 237);
+    private final Color ACCENT_COLOR = new Color(255, 215, 0);
+    private final Color DARK_COLOR = new Color(25, 25, 112);
+    private final Color LIGHT_COLOR = new Color(240, 248, 255);
     private final Color TEXT_BG_COLOR = new Color(30, 30, 70);
+    private final Color BUTTON_TEXT_COLOR = Color.BLACK;
 
-    // Fuentes personalizadas
     private Font titleFont;
     private Font buttonFont;
     private Font textFont;
+    private Font smallFont;
 
     public GameGUI() {
         game = new Game(this);
@@ -60,33 +64,29 @@ public class GameGUI {
 
     private void initializeFonts() {
         try {
-            titleFont = new Font("Impact", Font.BOLD, 32);
-            buttonFont = new Font("Verdana", Font.BOLD, 14);
+            titleFont = new Font("Georgia", Font.BOLD, 36);
+            buttonFont = new Font("Segoe UI", Font.BOLD, 14);
             textFont = new Font("Consolas", Font.PLAIN, 14);
+            smallFont = new Font("Segoe UI", Font.PLAIN, 12);
         } catch (Exception e) {
-            titleFont = new Font(Font.SANS_SERIF, Font.BOLD, 32);
+            titleFont = new Font(Font.SERIF, Font.BOLD, 36);
             buttonFont = new Font(Font.SANS_SERIF, Font.BOLD, 14);
             textFont = new Font(Font.MONOSPACED, Font.PLAIN, 14);
+            smallFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
         }
     }
 
     private void initializeGUI() {
         mainFrame = new JFrame("⚔️ Lifting Programmer 🛡️");
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        mainFrame.setSize(1000, 750);
+        mainFrame.setSize(1100, 800);
+        mainFrame.setMinimumSize(new Dimension(900, 700));
         mainFrame.setLayout(new BorderLayout());
-
-        // Configurar el icono de la aplicación
-        try {
-            mainFrame.setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
-        } catch (Exception e) {
-            // Usar icono por defecto si no se encuentra el recurso
-        }
 
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(DARK_COLOR);
-        cardPanel.setName("MainPanel");
+        cardPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         createMainMenuPanel();
         createCampaignMenuPanel();
@@ -104,33 +104,66 @@ public class GameGUI {
         cardPanel.add(inventoryPanel, "Inventory");
         cardPanel.add(statsPanel, "Stats");
 
-        JPanel statusPanel = new JPanel(new BorderLayout());
-        statusPanel.setBorder(BorderFactory.createLineBorder(ACCENT_COLOR, 2));
-        statusPanel.setBackground(DARK_COLOR);
-
-        weatherLabel = new JLabel(" ⛅ Clima: - ", SwingConstants.LEFT);
-        weatherLabel.setFont(buttonFont);
-        weatherLabel.setForeground(LIGHT_COLOR);
-        weatherLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-
-        playerStatsLabel = new JLabel(" ❤️ HP: - | ⚔️ ATK: - | 🛡️ DEF: - | 🏃 SPD: - ", SwingConstants.RIGHT);
-        playerStatsLabel.setFont(buttonFont);
-        playerStatsLabel.setForeground(LIGHT_COLOR);
-        playerStatsLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-
-        battleStatusLabel = new JLabel(" ", SwingConstants.CENTER);
-        battleStatusLabel.setFont(buttonFont);
-        battleStatusLabel.setForeground(ACCENT_COLOR);
-
-        statusPanel.add(weatherLabel, BorderLayout.WEST);
-        statusPanel.add(battleStatusLabel, BorderLayout.CENTER);
-        statusPanel.add(playerStatsLabel, BorderLayout.EAST);
-
+        JPanel statusPanel = createStatusPanel();
         mainFrame.add(cardPanel, BorderLayout.CENTER);
         mainFrame.add(statusPanel, BorderLayout.SOUTH);
 
         centerFrameOnScreen(mainFrame);
         mainFrame.setVisible(true);
+    }
+
+    private JPanel createStatusPanel() {
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, ACCENT_COLOR),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        statusPanel.setBackground(new Color(30, 35, 50));
+
+        playerHealthBar = new JProgressBar(0, 100);
+        playerHealthBar.setForeground(Color.GREEN);
+        playerHealthBar.setBackground(new Color(50, 50, 50));
+        playerHealthBar.setStringPainted(true);
+        playerHealthBar.setBorder(BorderFactory.createEmptyBorder());
+        playerHealthBar.setPreferredSize(new Dimension(150, 20));
+
+        enemyHealthBar = new JProgressBar(0, 100);
+        enemyHealthBar.setForeground(Color.GREEN);
+        enemyHealthBar.setBackground(new Color(50, 50, 50));
+        enemyHealthBar.setStringPainted(true);
+        enemyHealthBar.setBorder(BorderFactory.createEmptyBorder());
+        enemyHealthBar.setPreferredSize(new Dimension(150, 20));
+
+        JPanel healthPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        healthPanel.setOpaque(false);
+        healthPanel.add(playerHealthBar);
+        healthPanel.add(enemyHealthBar);
+
+        weatherLabel = new JLabel(" Clima: - ", SwingConstants.LEFT);
+        weatherLabel.setFont(buttonFont);
+        weatherLabel.setForeground(LIGHT_COLOR);
+
+        playerStatsLabel = new JLabel(" HP: - | ATK: - | DEF: - | SPD: - ", SwingConstants.RIGHT);
+        playerStatsLabel.setFont(buttonFont);
+        playerStatsLabel.setForeground(LIGHT_COLOR);
+
+        battleStatusLabel = new JLabel(" ", SwingConstants.CENTER);
+        battleStatusLabel.setFont(buttonFont);
+        battleStatusLabel.setForeground(ACCENT_COLOR);
+
+        JPanel westPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        westPanel.setOpaque(false);
+        westPanel.add(weatherLabel);
+
+        JPanel eastPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        eastPanel.setOpaque(false);
+        eastPanel.add(playerStatsLabel);
+
+        statusPanel.add(westPanel, BorderLayout.WEST);
+        statusPanel.add(healthPanel, BorderLayout.CENTER);
+        statusPanel.add(eastPanel, BorderLayout.EAST);
+
+        return statusPanel;
     }
 
     private void centerFrameOnScreen(JFrame frame) {
@@ -143,21 +176,25 @@ public class GameGUI {
         JButton button = new JButton(text);
         button.setFont(buttonFont);
         button.setBackground(PRIMARY_COLOR);
-        button.setForeground(Color.BLACK);
+        button.setForeground(BUTTON_TEXT_COLOR);
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ACCENT_COLOR, 2),
-                BorderFactory.createEmptyBorder(10, 25, 10, 25)
+            BorderFactory.createLineBorder(ACCENT_COLOR, 2),
+            BorderFactory.createEmptyBorder(10, 25, 10, 25)
         ));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(SECONDARY_COLOR);
+                if (button.isEnabled()) {
+                    button.setBackground(SECONDARY_COLOR);
+                }
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(PRIMARY_COLOR);
+                if (button.isEnabled()) {
+                    button.setBackground(PRIMARY_COLOR);
+                }
             }
         });
 
@@ -167,46 +204,58 @@ public class GameGUI {
     private void createMainMenuPanel() {
         mainMenuPanel = new JPanel(new GridBagLayout());
         mainMenuPanel.setBackground(DARK_COLOR);
+        mainMenuPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
+        
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridwidth = GridBagConstraints.REMAINDER;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(15, 100, 15, 100);
 
-        JLabel titleLabel = new JLabel("⚔️ LIFTING PROGRAMMER 🛡️", SwingConstants.CENTER);
+        JLabel titleLabel = new JLabel("LIFTING PROGRAMMER", SwingConstants.CENTER);
         titleLabel.setFont(titleFont);
         titleLabel.setForeground(ACCENT_COLOR);
         mainMenuPanel.add(titleLabel, gbc);
 
-        JButton campaignButton = createStyledButton("🏰 Modo Campaña");
+        JButton campaignButton = createStyledButton("Modo Campaña");
         campaignButton.addActionListener(e -> {
             try {
                 game.startCampaignMode();
             } catch (Exception ex) {
-                showError("Error al iniciar modo campaña: " + ex.getMessage());
+                showError("Error al iniciar modo campaña", ex);
             }
         });
         mainMenuPanel.add(campaignButton, gbc);
 
-        JButton infiniteButton = createStyledButton("∞ Modo Infinito");
+        JButton infiniteButton = createStyledButton("Modo Infinito");
         infiniteButton.addActionListener(e -> {
             try {
                 game.startInfiniteMode();
             } catch (Exception ex) {
-                showError("Error al iniciar modo infinito: " + ex.getMessage());
+                showError("Error al iniciar modo infinito", ex);
             }
         });
         mainMenuPanel.add(infiniteButton, gbc);
 
-        JButton exitButton = createStyledButton("🚪 Salir");
+        JButton exitButton = createStyledButton("Salir");
         exitButton.addActionListener(e -> System.exit(0));
         mainMenuPanel.add(exitButton, gbc);
 
-        // Panel de créditos
-        JLabel creditsLabel = new JLabel("© 2025 Lifting Programmer - v1.0", SwingConstants.CENTER);
-        creditsLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        JPanel creditsPanel = new JPanel(new BorderLayout());
+        creditsPanel.setOpaque(false);
+        
+        JLabel versionLabel = new JLabel("Versión 1.2", SwingConstants.CENTER);
+        versionLabel.setFont(smallFont);
+        versionLabel.setForeground(LIGHT_COLOR);
+        
+        JLabel creditsLabel = new JLabel("© 2025 Lifting Programmer Team", SwingConstants.CENTER);
+        creditsLabel.setFont(smallFont);
         creditsLabel.setForeground(LIGHT_COLOR);
+        
+        creditsPanel.add(versionLabel, BorderLayout.NORTH);
+        creditsPanel.add(creditsLabel, BorderLayout.SOUTH);
+        
         gbc.insets = new Insets(50, 100, 10, 100);
-        mainMenuPanel.add(creditsLabel, gbc);
+        mainMenuPanel.add(creditsPanel, gbc);
     }
 
     private void createCampaignMenuPanel() {
@@ -229,13 +278,13 @@ public class GameGUI {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buttonPanel.setBackground(DARK_COLOR);
 
-        JButton newGameButton = createStyledButton("✨ Nuevo Jugador");
+        JButton newGameButton = createStyledButton("Nuevo Jugador");
         newGameButton.addActionListener(e -> showCharacterCreation());
 
-        JButton loadGameButton = createStyledButton("📂 Cargar Partida");
+        JButton loadGameButton = createStyledButton("Cargar Partida");
         loadGameButton.addActionListener(e -> showPlayerSelectionDialog());
 
-        JButton backButton = createStyledButton("🔙 Volver al Menú Principal");
+        JButton backButton = createStyledButton("Volver al Menú Principal");
         backButton.addActionListener(e -> showMainMenu());
 
         buttonPanel.add(newGameButton);
@@ -248,44 +297,84 @@ public class GameGUI {
 
     private void showPlayerSelectionDialog() {
         try {
-            List<Game.PlayerInfo> players = game.getAvailablePlayers();
+            List<PlayerInfo> campaignPlayers = game.getCampaignPlayers();
             
-            if (players.isEmpty()) {
-                showError("No hay personajes guardados. Crea uno nuevo.");
+            if (campaignPlayers.isEmpty()) {
+                showError("No hay personajes guardados en el modo campaña. Crea uno nuevo.");
                 return;
             }
             
-            JComboBox<Game.PlayerInfo> playerCombo = new JComboBox<>(players.toArray(new Game.PlayerInfo[0]));
-            playerCombo.setRenderer(new DefaultListCellRenderer() {
-                @Override
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index, 
-                                                            boolean isSelected, boolean cellHasFocus) {
-                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    if (value instanceof Game.PlayerInfo) {
-                        setText(((Game.PlayerInfo)value).toString());
-                    }
-                    return this;
-                }
-            });
+            JPanel cardsPanel = new JPanel(new GridLayout(0, 1, 10, 10));
+            cardsPanel.setBackground(DARK_COLOR);
             
-            JPanel panel = new JPanel(new BorderLayout());
-            panel.add(new JLabel("Selecciona un personaje:"), BorderLayout.NORTH);
-            panel.add(playerCombo, BorderLayout.CENTER);
+            ButtonGroup group = new ButtonGroup();
+            JRadioButton[] radioButtons = new JRadioButton[campaignPlayers.size()];
             
-            int result = JOptionPane.showConfirmDialog(mainFrame, panel, "Cargar Personaje", 
-                                                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            for (int i = 0; i < campaignPlayers.size(); i++) {
+                PlayerInfo player = campaignPlayers.get(i);
+                
+                JPanel playerCard = new JPanel(new BorderLayout(10, 10));
+                playerCard.setBackground(new Color(40, 45, 60));
+                playerCard.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ACCENT_COLOR, 1),
+                    BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                ));
+                
+                radioButtons[i] = new JRadioButton();
+                radioButtons[i].setBackground(new Color(40, 45, 60));
+                group.add(radioButtons[i]);
+                
+                JPanel infoPanel = new JPanel(new GridLayout(0, 1));
+                infoPanel.setBackground(new Color(40, 45, 60));
+                
+                JLabel nameLabel = new JLabel("Nombre: " + player.getName());
+                nameLabel.setForeground(LIGHT_COLOR);
+                nameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+                
+                JLabel classLabel = new JLabel("Clase: " + player.getClassDisplayName());
+                classLabel.setForeground(LIGHT_COLOR);
+                
+                JLabel levelLabel = new JLabel("Nivel: " + (int)player.getLevel());
+                levelLabel.setForeground(ACCENT_COLOR);
+                
+                infoPanel.add(nameLabel);
+                infoPanel.add(classLabel);
+                infoPanel.add(levelLabel);
+                
+                playerCard.add(radioButtons[i], BorderLayout.WEST);
+                playerCard.add(infoPanel, BorderLayout.CENTER);
+                
+                cardsPanel.add(playerCard);
+            }
+            
+            JScrollPane scrollPane = new JScrollPane(cardsPanel);
+            scrollPane.setPreferredSize(new Dimension(400, 300));
+            scrollPane.setBorder(BorderFactory.createEmptyBorder());
+            
+            int result = JOptionPane.showConfirmDialog(
+                mainFrame, 
+                scrollPane, 
+                "Selecciona tu personaje", 
+                JOptionPane.OK_CANCEL_OPTION, 
+                JOptionPane.PLAIN_MESSAGE
+            );
             
             if (result == JOptionPane.OK_OPTION) {
-                Game.PlayerInfo selected = (Game.PlayerInfo)playerCombo.getSelectedItem();
-                game.loadPlayerById(selected.id);
-                updatePlayerStats();
-                showBattleScreen();
-                
-                appendToTextArea("\n¡Bienvenido de nuevo, " + game.player.getName() + "!");
-                appendToTextArea("Nivel: " + game.player.getLevel() + 
-                               ", Experiencia: " + game.player.getExperience() + 
-                               "/" + (game.player.getLevel() * 100));
-                appendToTextArea("Dinero: " + game.player.getMoney());
+                for (int i = 0; i < radioButtons.length; i++) {
+                    if (radioButtons[i].isSelected()) {
+                        PlayerInfo selected = campaignPlayers.get(i);
+                        game.loadPlayerById(selected.getId());
+                        updatePlayerStats();
+                        showBattleScreen();
+                        
+                        appendToTextArea("\n¡Bienvenido de nuevo, " + game.player.getName() + "!");
+                        appendToTextArea("Nivel: " + game.player.getLevel() + 
+                                       ", Experiencia: " + game.player.getExperience() + 
+                                       "/" + (game.player.getLevel() * 100));
+                        appendToTextArea("Dinero: " + game.player.getMoney());
+                        break;
+                    }
+                }
             }
         } catch (SQLException ex) {
             showError("Error al cargar personajes: " + ex.getMessage());
@@ -314,10 +403,10 @@ public class GameGUI {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buttonPanel.setBackground(DARK_COLOR);
 
-        JButton startInfiniteButton = createStyledButton("⚡ Comenzar Modo Infinito");
+        JButton startInfiniteButton = createStyledButton("Comenzar Modo Infinito");
         startInfiniteButton.addActionListener(e -> showCharacterCreation());
 
-        JButton backButton = createStyledButton("🔙 Volver al Menú Principal");
+        JButton backButton = createStyledButton("Volver al Menú Principal");
         backButton.addActionListener(e -> showMainMenu());
 
         buttonPanel.add(startInfiniteButton);
@@ -347,7 +436,7 @@ public class GameGUI {
                 BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
 
-        classSelector = new JComboBox<>(new String[]{"⚔️ Espadachín", "🔨 Herrero", "🏹 Arquero", "🔮 Mago"});
+        classSelector = new JComboBox<>(new String[]{"Espadachín", "Herrero", "Arquero", "Mago"});
         classSelector.setFont(buttonFont);
         classSelector.setBackground(PRIMARY_COLOR);
         classSelector.setForeground(Color.WHITE);
@@ -371,40 +460,38 @@ public class GameGUI {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setBackground(DARK_COLOR);
 
-        JButton createButton = createStyledButton("🎮 Crear Personaje");
+        JButton createButton = createStyledButton("Crear Personaje");
         createButton.addActionListener(e -> {
-            String name = nameField.getText();
+            String name = nameField.getText().trim();
             if (name.isEmpty()) {
                 showError("Debes ingresar un nombre para tu personaje");
+                return;
+            }
+            
+            if (name.length() > 20) {
+                showError("El nombre no puede tener más de 20 caracteres");
                 return;
             }
 
             String characterClass = "";
             switch (classSelector.getSelectedIndex()) {
-                case 0:
-                    characterClass = "SWORDSMAN";
-                    break;
-                case 1:
-                    characterClass = "BLACKSMITH";
-                    break;
-                case 2:
-                    characterClass = "ARCHER";
-                    break;
-                case 3:
-                    characterClass = "WIZARD";
-                    break;
+                case 0: characterClass = "SWORDSMAN"; break;
+                case 1: characterClass = "BLACKSMITH"; break;
+                case 2: characterClass = "ARCHER"; break;
+                case 3: characterClass = "WIZARD"; break;
+                default:
+                    showError("Clase no válida");
+                    return;
             }
 
             try {
-                game.createNewPlayer(cardPanel.getName().equals("InfiniteMenu"), name, characterClass);
-            } catch (CharacterCreationException ex) {
-                showError("Error al crear personaje: " + ex.getMessage());
+                game.createNewPlayer(game.infiniteMode, name, characterClass);
             } catch (Exception ex) {
-                showError("Error inesperado: " + ex.getMessage());
+                showError("Error al crear personaje", ex);
             }
         });
 
-        JButton backButton = createStyledButton("🔙 Volver");
+        JButton backButton = createStyledButton("Volver");
         backButton.addActionListener(e -> {
             if (game.infiniteMode) {
                 showInfiniteMenu();
@@ -441,13 +528,16 @@ public class GameGUI {
         actionPanel.setBackground(DARK_COLOR);
 
         actionButtons = new HashMap<>();
-        String[] actions = {"⚔️ Atacar", "🤸 Esquivar", "🛡️ Defender", "❤️ Curarse", "🌟 Acción especial"};
+        String[] actions = {"Atacar", "Esquivar", "Defender", "Curarse", "Acción especial"};
 
         for (String action : actions) {
             JButton button = createStyledButton(action);
-            button.setActionCommand(action.substring(2).trim());
-            button.addActionListener(e -> game.processPlayerAction(e.getActionCommand()));
-            actionButtons.put(action.substring(2).trim(), button);
+            button.setActionCommand(action);
+            button.addActionListener(e -> {
+                game.processPlayerAction(e.getActionCommand());
+                enableNewBattleButton(false);
+            });
+            actionButtons.put(action, button);
             actionPanel.add(button);
         }
 
@@ -455,18 +545,18 @@ public class GameGUI {
         menuPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         menuPanel.setBackground(DARK_COLOR);
 
-        JButton newBattleButton = createStyledButton("⚔ Nueva Batalla");
+        newBattleButton = createStyledButton("Nueva Batalla");
         newBattleButton.setActionCommand("NuevaBatalla");
         newBattleButton.addActionListener(e -> startNewBattle());
         newBattleButton.setEnabled(false);
 
-        JButton inventoryButton = createStyledButton("🎒 Inventario");
+        JButton inventoryButton = createStyledButton("Inventario");
         inventoryButton.addActionListener(e -> showInventory());
 
-        JButton statsButton = createStyledButton("📊 Estadísticas");
+        JButton statsButton = createStyledButton("Estadísticas");
         statsButton.addActionListener(e -> showStats());
 
-        JButton saveButton = createStyledButton("💾 Guardar");
+        JButton saveButton = createStyledButton("Guardar");
         saveButton.addActionListener(e -> {
             try {
                 game.saveGame();
@@ -475,7 +565,7 @@ public class GameGUI {
             }
         });
 
-        JButton backButton = createStyledButton("🏃‍♂️ Huir");
+        JButton backButton = createStyledButton("Huir");
         backButton.addActionListener(e -> {
             if (game.infiniteMode) {
                 showInfiniteMenu();
@@ -501,12 +591,15 @@ public class GameGUI {
 
     private void startNewBattle() {
         try {
-            game.startBattle(game.infiniteMode ? game.currentWave : (int) game.player.getLevel());
+            if (game.infiniteMode) {
+                game.startBattle(game.currentWave);
+            } else {
+                game.startBattle((int) game.player.getLevel());
+            }
             enableNewBattleButton(false);
-        } catch (BattleStartException ex) {
-            showError("Error al iniciar batalla: " + ex.getMessage());
+            enableBattleButtons(true);
         } catch (Exception ex) {
-            showError("Error inesperado: " + ex.getMessage());
+            showError("Error al iniciar batalla: " + ex.getMessage());
         }
     }
 
@@ -528,7 +621,7 @@ public class GameGUI {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buttonPanel.setBackground(DARK_COLOR);
 
-        JButton useItemButton = createStyledButton("🔄 Usar Item");
+        JButton useItemButton = createStyledButton("Usar Item");
         useItemButton.addActionListener(e -> {
             String itemNum = JOptionPane.showInputDialog(mainFrame, "Ingresa el número del item a usar:");
             if (itemNum != null && !itemNum.isEmpty()) {
@@ -559,25 +652,35 @@ public class GameGUI {
             }
         });
 
-        JButton sortByNameButton = createStyledButton("🔤 Ordenar por Nombre");
+        JButton sortByNameButton = createStyledButton("Ordenar por Nombre");
         sortByNameButton.addActionListener(e -> {
             if (game.player != null) {
                 List<Item> items = game.player.getItems();
-                Collections.sort(items, Comparator.comparing(i -> i.name));
+                Collections.sort(items, new Comparator<Item>() {
+                    @Override
+                    public int compare(Item i1, Item i2) {
+                        return i1.name.compareTo(i2.name);
+                    }
+                });
                 updateInventory(inventoryTextArea);
             }
         });
 
-        JButton sortByRarityButton = createStyledButton("✨ Ordenar por Rareza");
+        JButton sortByRarityButton = createStyledButton("Ordenar por Rareza");
         sortByRarityButton.addActionListener(e -> {
             if (game.player != null) {
                 List<Item> items = game.player.getItems();
-                Collections.sort(items, (i1, i2) -> i2.rarity.compareTo(i1.rarity));
+                Collections.sort(items, new Comparator<Item>() {
+                    @Override
+                    public int compare(Item i1, Item i2) {
+                        return i2.rarity.compareTo(i1.rarity);
+                    }
+                });
                 updateInventory(inventoryTextArea);
             }
         });
 
-        JButton backButton = createStyledButton("⚔️ Volver a Batalla");
+        JButton backButton = createStyledButton("Volver a Batalla");
         backButton.addActionListener(e -> showBattleScreen());
 
         buttonPanel.add(useItemButton);
@@ -607,7 +710,7 @@ public class GameGUI {
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
 
-        JButton backButton = createStyledButton("⚔️ Volver a Batalla");
+        JButton backButton = createStyledButton("Volver a Batalla");
         backButton.addActionListener(e -> showBattleScreen());
 
         JPanel buttonPanel = new JPanel();
@@ -623,7 +726,7 @@ public class GameGUI {
     private void updateInventory(JTextArea textArea) {
         if (game.player != null) {
             textArea.setText("════════ INVENTARIO ════════\n");
-            textArea.append("💰 Dinero: " + game.player.getMoney() + "\n\n");
+            textArea.append("Dinero: " + game.player.getMoney() + "\n\n");
 
             if (game.player.getItems().isEmpty()) {
                 textArea.append("No tienes objetos en tu inventario.\n");
@@ -634,21 +737,11 @@ public class GameGUI {
                     Item item = iterator.next();
                     String raritySymbol = "";
                     switch (item.rarity) {
-                        case COMMON:
-                            raritySymbol = "⚪";
-                            break;
-                        case UNCOMMON:
-                            raritySymbol = "🟢";
-                            break;
-                        case RARE:
-                            raritySymbol = "🔵";
-                            break;
-                        case EPIC:
-                            raritySymbol = "🟣";
-                            break;
-                        case LEGENDARY:
-                            raritySymbol = "🟡";
-                            break;
+                        case COMMON: raritySymbol = "⚪"; break;
+                        case UNCOMMON: raritySymbol = "🟢"; break;
+                        case RARE: raritySymbol = "🔵"; break;
+                        case EPIC: raritySymbol = "🟣"; break;
+                        case LEGENDARY: raritySymbol = "🟡"; break;
                     }
 
                     textArea.append(String.format("%2d. %s %-25s ATK: %+4.1f DEF: %+4.1f SPD: %+4.1f HP: %+4.1f\n",
@@ -665,9 +758,9 @@ public class GameGUI {
             textArea.setText("════════ ESTADÍSTICAS ════════\n\n");
             textArea.append(String.format("🔹 %-15s: %s\n", "Nombre", game.player.getName()));
             textArea.append(String.format("🔹 %-15s: %s\n", "Clase", game.player.getType()));
-            textArea.append(String.format("🔹 %-15s: %.1f\n", "Nivel", game.player.getLevel()));
-            textArea.append(String.format("🔹 %-15s: %.1f/%.1f\n", "Experiencia",
-                    game.player.getExperience(), (game.player.getLevel() * 100)));
+            textArea.append(String.format("🔹 %-15s: %d\n", "Nivel", (int)game.player.getLevel()));
+            textArea.append(String.format("🔹 %-15s: %d/%d\n", "Experiencia",
+                    (int)game.player.getExperience(), (int)(game.player.getLevel() * 100)));
             textArea.append(String.format("🔹 %-15s: %.1f\n", "HP", game.player.getLive()));
             textArea.append(String.format("🔹 %-15s: %.1f\n", "Ataque", game.player.getAttack()));
             textArea.append(String.format("🔹 %-15s: %.1f\n", "Defensa", game.player.getDefend()));
@@ -710,18 +803,33 @@ public class GameGUI {
 
     public void updatePlayerStats() {
         if (game.player != null) {
-            String stats = String.format(" ❤️ %.1f | ⚔️ %.1f | 🛡️ %.1f | 🏃 %.1f ",
+            String stats = String.format(" %.1f HP | %.1f ATK | %.1f DEF | %.1f SPD ",
                     game.player.getLive(), game.player.getAttack(),
                     game.player.getDefend(), game.player.getSpeed());
 
             if (game.player instanceof Archer) {
-                stats += "| 🏹 " + ((Archer) game.player).getArrowCount();
+                stats += "| " + ((Archer) game.player).getArrowCount() + " FLECHAS";
             } else if (game.player instanceof Wizard) {
-                stats += "| 🔮 " + ((Wizard) game.player).getMana() + "/" + ((Wizard) game.player).getMaxMana();
+                stats += "| " + ((Wizard) game.player).getMana() + "/" + ((Wizard) game.player).getMaxMana() + " MANÁ";
             }
 
             playerStatsLabel.setText(stats);
         }
+    }
+
+    public void updateHealthBars(double playerHealth, double playerMaxHealth, 
+                               double enemyHealth, double enemyMaxHealth) {
+        int playerPercent = (int)((playerHealth / playerMaxHealth) * 100);
+        int enemyPercent = (int)((enemyHealth / enemyMaxHealth) * 100);
+        
+        playerHealthBar.setValue(playerPercent);
+        playerHealthBar.setString(String.format("%.1f/%.1f", playerHealth, playerMaxHealth));
+        
+        enemyHealthBar.setValue(enemyPercent);
+        enemyHealthBar.setString(String.format("%.1f/%.1f", enemyHealth, enemyMaxHealth));
+        
+        playerHealthBar.setForeground(playerPercent < 30 ? Color.RED : Color.GREEN);
+        enemyHealthBar.setForeground(enemyPercent < 30 ? Color.RED : Color.GREEN);
     }
 
     public void updateWeatherInfo(WeatherAPI.WeatherData weather) {
@@ -732,51 +840,42 @@ public class GameGUI {
 
     private String getWeatherIcon(WeatherAPI.WeatherCondition condition) {
         switch (condition) {
-            case SUNNY:
-                return "☀️";
-            case CLOUDY:
-                return "☁️";
-            case RAINY:
-                return "🌧️";
-            case STORMY:
-                return "⛈️";
-            case SNOWY:
-                return "❄️";
-            case FOGGY:
-                return "🌫️";
-            case WINDY:
-                return "🌬️";
-            default:
-                return "⛅";
+            case SUNNY: return "☀️";
+            case CLOUDY: return "☁️";
+            case RAINY: return "🌧️";
+            case STORMY: return "⛈️";
+            case SNOWY: return "❄️";
+            case FOGGY: return "🌫️";
+            case WINDY: return "🌬️";
+            default: return "⛅";
         }
     }
 
     public void updateBattleInfo(String playerStatus, String monsterStatus) {
-        battleStatusLabel.setText("👤 " + playerStatus + "  |  👹 " + monsterStatus);
+        battleStatusLabel.setText(playerStatus + "  |  " + monsterStatus);
     }
 
     public void enableBattleButtons(boolean enabled) {
-        actionButtons.values().forEach(button -> {
+        for (JButton button : actionButtons.values()) {
             button.setEnabled(enabled);
             button.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
-        });
-    }
-
-    public void enableNewBattleButton(boolean enabled) {
-        for (Component comp : battlePanel.getComponents()) {
-            if (comp instanceof JPanel) {
-                for (Component btn : ((JPanel)comp).getComponents()) {
-                    if (btn instanceof JButton && "NuevaBatalla".equals(((JButton)btn).getActionCommand())) {
-                        btn.setEnabled(enabled);
-                        btn.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
-                    }
-                }
-            }
         }
     }
 
+    public void enableNewBattleButton(boolean enabled) {
+        newBattleButton.setEnabled(enabled);
+        newBattleButton.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
+    }
+
     public void showError(String message) {
-        JOptionPane.showMessageDialog(mainFrame, message, "❌ Error", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(mainFrame, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showError(String title, Exception ex) {
+        JOptionPane.showMessageDialog(mainFrame, 
+            title + ": " + ex.getMessage(), 
+            "Error", 
+            JOptionPane.ERROR_MESSAGE);
     }
 
     public void showMainMenu() {
@@ -818,33 +917,29 @@ public class GameGUI {
         try {
             game.startBattle(game.infiniteMode ? game.currentWave : (int) game.player.getLevel());
             enableNewBattleButton(false);
-        } catch (BattleStartException ex) {
-            showError("Error al iniciar batalla: " + ex.getMessage());
         } catch (Exception ex) {
-            showError("Error inesperado: " + ex.getMessage());
+            showError("Error al iniciar batalla: " + ex.getMessage());
         }
     }
 
     public void showInventory() {
-        JTextArea inventoryTextArea = (JTextArea) ((JScrollPane) ((BorderLayout) inventoryPanel.getLayout()).getLayoutComponent(BorderLayout.CENTER)).getViewport().getView();
+        JTextArea inventoryTextArea = (JTextArea) ((JScrollPane) inventoryPanel.getComponent(0)).getViewport().getView();
         updateInventory(inventoryTextArea);
         cardLayout.show(cardPanel, "Inventory");
     }
 
     public void showStats() {
-        JTextArea statsTextArea = (JTextArea) ((JScrollPane) ((BorderLayout) statsPanel.getLayout()).getLayoutComponent(BorderLayout.CENTER)).getViewport().getView();
+        JTextArea statsTextArea = (JTextArea) ((JScrollPane) statsPanel.getComponent(0)).getViewport().getView();
         updateStats(statsTextArea);
         cardLayout.show(cardPanel, "Stats");
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            new GameGUI();
-        });
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        new GameGUI();
     }
 }
