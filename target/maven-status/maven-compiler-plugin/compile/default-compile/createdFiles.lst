@@ -8,7 +8,6 @@ zv\liftingprogramer\LIFTINGPROGRAMER.class
 zv\liftingprogramer\WeatherAPI$WeatherCondition.class
 zv\liftingprogramer\characters\ACTIONS.class
 zv\liftingprogramer\GameGUI$2.class
-zv\liftingprogramer\GameGUI$5.class
 zv\liftingprogramer\characters\SWORDSMAN.class
 zv\liftingprogramer\InvalidPlayerIdException.class
 zv\liftingprogramer\PlayerInfo.class
@@ -26,7 +25,6 @@ zv\liftingprogramer\CharacterCreationException.class
 zv\liftingprogramer\characters\BLACKSMITH.class
 zv\liftingprogramer\characters\RangedPlayer.class
 zv\liftingprogramer\Game.class
-zv\liftingprogramer\GameGUI$4.class
 zv\liftingprogramer\GameGUI.class
 zv\liftingprogramer\characters\MONSTER.class
 zv\liftingprogramer\objetos\ItemFactory$1.class

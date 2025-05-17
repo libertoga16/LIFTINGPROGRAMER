@@ -64,5 +64,5 @@ public abstract class PLAYER extends Character implements ACTIONS {
         this.money = amount;
 
     }
-
 }
+
