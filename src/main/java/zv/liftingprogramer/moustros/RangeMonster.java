@@ -1,16 +1,13 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package zv.liftingprogramer.moustros;
-
 
 import zv.liftingprogramer.characters.MONSTER;
 
 public class RangeMonster extends MONSTER {
-    public RangeMonster(String name, double live, double defend, double attack, double speed, 
-                        double fear, int experienceGiven, double moneyGiven) {
-        super(name, live, defend, attack, speed, fear, experienceGiven, moneyGiven);
+
+    public RangeMonster(int id, String name, double live, double defend, double attack, 
+            double speed, double fear, int experienceGiven, double moneyGiven, 
+            int level, String type, double criticalChance) {
+        super(id, name, live, defend, attack, speed, fear, experienceGiven, moneyGiven, level, type, criticalChance);
     }
     
     @Override

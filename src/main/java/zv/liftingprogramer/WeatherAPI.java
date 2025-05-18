@@ -6,10 +6,10 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import zv.liftingprogramer.characters.Character;
+import zv.liftingprogramer.characters.PLAYER;
 
 public class WeatherAPI {
-    private static final String API_KEY = "4f65d81615a8746a7b0f49736a62c854"; // Reemplaza con tu clave real
+    private static final String API_KEY = "4f65d81615a8746a7b0f49736a62c854";
     private static final String API_URL = "http://api.openweathermap.org/data/2.5/weather?q=Granada,es&units=metric&appid=";
 
     public enum WeatherCondition {
@@ -79,6 +79,9 @@ public class WeatherAPI {
             case "mist":
                 condition = WeatherCondition.FOGGY;
                 break;
+            case "wind":
+                condition = WeatherCondition.WINDY;
+                break;
             default:
                 condition = WeatherCondition.CLOUDY;
         }
@@ -90,59 +93,63 @@ public class WeatherAPI {
         return new WeatherData(WeatherCondition.CLOUDY, "nublado", 20.0, 65);
     }
 
-    public static void applyWeatherEffects(Character character, WeatherData weather) {
-        double originalAttack = character.getAttack();
-        double originalDefend = character.getDefend();
-        double originalSpeed = character.getSpeed();
+    public static void applyWeatherEffects(PLAYER player, WeatherData weather) {
+        // Guardar los valores originales si no están establecidos
+        if (player.getOriginalAttack() <= 0) player.setOriginalAttack(player.getAttack());
+        if (player.getOriginalDefend() <= 0) player.setOriginalDefend(player.getDefend());
+        if (player.getOriginalSpeed() <= 0) player.setOriginalSpeed(player.getSpeed());
 
+        // Aplicar modificadores según el clima
         switch (weather.condition) {
             case SUNNY:
-                character.attack *= 1.2;
-                character.speed *= 1.1;
+                player.setAttack(player.getOriginalAttack() * 1.25);
+                player.setSpeed(player.getOriginalSpeed() * 1.15);
                 break;
             case CLOUDY:
+                // Sin efectos
                 break;
             case RAINY:
-                character.attack *= 0.9;
-                character.speed *= 0.9;
-                character.defend *= 1.05;
+                player.setAttack(player.getOriginalAttack() * 0.9);
+                player.setSpeed(player.getOriginalSpeed() * 0.85);
+                player.setDefend(player.getOriginalDefend() * 1.10);
                 break;
             case STORMY:
-                character.attack *= 0.8;
-                character.defend *= 1.1;
+                player.setAttack(player.getOriginalAttack() * 0.8);
+                player.setDefend(player.getOriginalDefend() * 1.15);
                 break;
             case SNOWY:
-                character.speed *= 0.8;
-                character.defend *= 1.15;
+                player.setSpeed(player.getOriginalSpeed() * 0.75);
+                player.setDefend(player.getOriginalDefend() * 1.20);
                 break;
             case FOGGY:
-                character.speed *= 0.85;
+                player.setSpeed(player.getOriginalSpeed() * 0.8);
+                player.setAttack(player.getOriginalAttack() * 0.9);
                 break;
             case WINDY:
-                character.speed *= 1.15;
-                character.defend *= 0.95;
+                player.setSpeed(player.getOriginalSpeed() * 1.20);
+                player.setDefend(player.getOriginalDefend() * 0.9);
                 break;
         }
 
-        character.weatherAttackModifier = character.getAttack() / originalAttack;
-        character.weatherDefendModifier = character.getDefend() / originalDefend;
-        character.weatherSpeedModifier = character.getSpeed() / originalSpeed;
+        // Asegurar valores mínimos
+        player.setAttack(Math.max(1, player.getAttack()));
+        player.setDefend(Math.max(0.5, player.getDefend()));
+        player.setSpeed(Math.max(0.5, player.getSpeed()));
     }
 
-    public static void removeWeatherEffects(Character character) {
-        if (character.weatherAttackModifier != 1.0) {
-            character.attack /= character.weatherAttackModifier;
+    public static void removeWeatherEffects(PLAYER player) {
+        if (player.getOriginalAttack() > 0) {
+            player.setAttack(player.getOriginalAttack());
         }
-        if (character.weatherDefendModifier != 1.0) {
-            character.defend /= character.weatherDefendModifier;
+        if (player.getOriginalDefend() > 0) {
+            player.setDefend(player.getOriginalDefend());
         }
-        if (character.weatherSpeedModifier != 1.0) {
-            character.speed /= character.weatherSpeedModifier;
+        if (player.getOriginalSpeed() > 0) {
+            player.setSpeed(player.getOriginalSpeed());
         }
-
-        character.weatherAttackModifier = 1.0;
-        character.weatherDefendModifier = 1.0;
-        character.weatherSpeedModifier = 1.0;
+        
+        // Restablecer valores originales
+        player.resetOriginalStats();
     }
 
     public static class WeatherData {

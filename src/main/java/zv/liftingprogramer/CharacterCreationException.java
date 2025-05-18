@@ -8,10 +8,8 @@ package zv.liftingprogramer;
  *
  * @author liber
  */
-public class CharacterCreationException extends Exception{
-
-    public CharacterCreationException(String message) {
-        super(message);
+ public class CharacterCreationException extends Exception {
+        public CharacterCreationException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
-    
-}

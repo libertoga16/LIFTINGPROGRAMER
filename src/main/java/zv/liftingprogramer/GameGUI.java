@@ -2,62 +2,52 @@ package zv.liftingprogramer;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.*;
+import java.util.*;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.sound.sampled.*;
 import javax.swing.text.DefaultCaret;
-import zv.liftingprogramer.characters.Archer;
-import zv.liftingprogramer.characters.BLACKSMITH;
-import zv.liftingprogramer.characters.SWORDSMAN;
-import zv.liftingprogramer.characters.Wizard;
+import java.awt.Font;
+import zv.liftingprogramer.characters.*;
 import zv.liftingprogramer.objetos.Item;
 
-/**
- * Clase principal que maneja la interfaz gráfica del juego
- */
 public class GameGUI {
-
-    // Componentes principales
-    private JFrame mainFrame;
+    public JFrame mainFrame;
     private CardLayout cardLayout;
     private JPanel cardPanel;
-    private Game game;
+    private final Game game;
 
-    // Paneles de las diferentes pantallas
     private JPanel mainMenuPanel;
     private JPanel campaignMenuPanel;
     private JPanel infiniteMenuPanel;
     private JPanel characterCreationPanel;
-    private JPanel battlePanel;
+    public JPanel battlePanel;
     private JPanel inventoryPanel;
     private JPanel statsPanel;
 
-    // Componentes de UI
     private JTextArea gameTextArea;
     private JLabel weatherLabel;
     private JLabel playerStatsLabel;
     private JLabel battleStatusLabel;
 
-    // Botones de acción
     private Map<String, JButton> actionButtons;
     private JComboBox<String> classSelector;
     private JButton newBattleButton;
+    private JButton shopButton;
 
-    // Configuración de colores mejorada
+    private JFrame shopFrame;
+    private JTextArea shopTextArea;
+
+    private Clip battleMusic;
+    private boolean musicPlaying = false;
+
     private final Color DARK_COLOR = new Color(30, 30, 40);
     private final Color LIGHT_COLOR = new Color(220, 220, 220);
     private final Color TEXT_BG_COLOR = new Color(40, 40, 60);
     private final Color PRIMARY_COLOR = new Color(65, 105, 225);
     private final Color SECONDARY_COLOR = new Color(100, 149, 237);
     private final Color ACCENT_COLOR = new Color(255, 215, 0);
-    private final Color ERROR_COLOR = new Color(200, 50, 50);
 
-    // Fuentes mejoradas
     Font titleFont = new Font("Georgia", Font.BOLD, 42);
     Font buttonFont = new Font("Segoe UI", Font.BOLD, 16);
     Font textFont = new Font("Consolas", Font.PLAIN, 16);
@@ -65,6 +55,7 @@ public class GameGUI {
     public GameGUI() {
         game = new Game(this);
         initializeGUI();
+
     }
 
     private void initializeGUI() {
@@ -74,7 +65,6 @@ public class GameGUI {
         mainFrame.setMinimumSize(new Dimension(1000, 750));
         mainFrame.setLayout(new BorderLayout());
 
-        // Configuración del sistema de pantallas
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(DARK_COLOR);
@@ -86,8 +76,8 @@ public class GameGUI {
         createBattlePanel();
         createInventoryPanel();
         createStatsPanel();
+        createShopPanel();
 
-        // Agregar todas las pantallas
         cardPanel.add(mainMenuPanel, "MainMenu");
         cardPanel.add(campaignMenuPanel, "CampaignMenu");
         cardPanel.add(infiniteMenuPanel, "InfiniteMenu");
@@ -96,13 +86,38 @@ public class GameGUI {
         cardPanel.add(inventoryPanel, "Inventory");
         cardPanel.add(statsPanel, "Stats");
 
-        // Panel de estado inferior
         JPanel statusPanel = createStatusPanel();
         mainFrame.add(cardPanel, BorderLayout.CENTER);
         mainFrame.add(statusPanel, BorderLayout.SOUTH);
 
         centerFrameOnScreen(mainFrame);
         mainFrame.setVisible(true);
+    }
+
+    
+
+    public void playBattleMusic() {
+        if (battleMusic != null && !musicPlaying) {
+            try {
+                battleMusic.setFramePosition(0);
+                battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
+                musicPlaying = true;
+            } catch (Exception e) {
+                System.out.println("Error al reproducir música: " + e.getMessage());
+            }
+        }
+    }
+
+    public void stopBattleMusic() {
+        if (battleMusic != null && musicPlaying) {
+            try {
+                battleMusic.stop();
+                battleMusic.setFramePosition(0);
+                musicPlaying = false;
+            } catch (Exception e) {
+                System.out.println("Error al detener música: " + e.getMessage());
+            }
+        }
     }
 
     private JPanel createStatusPanel() {
@@ -375,7 +390,7 @@ public class GameGUI {
         } catch (SQLException ex) {
             showError("Error al cargar personajes", ex);
         } catch (PlayerNotFoundException ex) {
-            Logger.getLogger(GameGUI.class.getName()).log(Level.SEVERE, null, ex);
+            showError("Jugador no encontrado", ex);
         }
     }
 
@@ -459,18 +474,10 @@ public class GameGUI {
 
             String characterClass = "";
             switch (classSelector.getSelectedIndex()) {
-                case 0:
-                    characterClass = "SWORDSMAN";
-                    break;
-                case 1:
-                    characterClass = "BLACKSMITH";
-                    break;
-                case 2:
-                    characterClass = "ARCHER";
-                    break;
-                case 3:
-                    characterClass = "WIZARD";
-                    break;
+                case 0: characterClass = "SWORDSMAN"; break;
+                case 1: characterClass = "BLACKSMITH"; break;
+                case 2: characterClass = "ARCHER"; break;
+                case 3: characterClass = "WIZARD"; break;
             }
 
             try {
@@ -496,93 +503,119 @@ public class GameGUI {
         characterCreationPanel.add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void createBattlePanel() {
-        battlePanel = new JPanel(new BorderLayout());
-        battlePanel.setBackground(DARK_COLOR);
+   private void createBattlePanel() {
+    battlePanel = new JPanel(new BorderLayout());
+    battlePanel.setBackground(DARK_COLOR);
 
-        gameTextArea = new JTextArea();
-        setupTextArea(gameTextArea);
-        JScrollPane scrollPane = new JScrollPane(gameTextArea);
+    gameTextArea = new JTextArea();
+    setupTextArea(gameTextArea);
+    JScrollPane scrollPane = new JScrollPane(gameTextArea);
 
-        JPanel actionPanel = new JPanel(new GridLayout(0, 1, 0, 15));
-        actionPanel.setBackground(DARK_COLOR);
-        actionPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20));
+    JPanel actionPanel = new JPanel(new GridLayout(0, 1, 0, 15));
+    actionPanel.setBackground(DARK_COLOR);
+    actionPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20));
 
-        actionButtons = new HashMap<>();
-        String[] actions = {"Atacar", "Esquivar", "Defender", "Curarse", "Acción especial"};
-        Color[] actionColors = {
-            new Color(220, 60, 60), // Rojo para atacar
-            new Color(60, 180, 60), // Verde para esquivar
-            new Color(60, 60, 180), // Azul para defender
-            new Color(180, 60, 180), // Morado para curarse
-            ACCENT_COLOR // Oro para acción especial
-        };
+    actionButtons = new HashMap<>();
+    Map<String, Color> actionColorMap = new HashMap<>();
+    actionColorMap.put("Atacar", new Color(220, 60, 60));
+    actionColorMap.put("Esquivar", new Color(60, 180, 60));
+    actionColorMap.put("Defender", new Color(60, 60, 180));
+    actionColorMap.put("Curarse", new Color(180, 60, 180));
+    actionColorMap.put("Acción especial", ACCENT_COLOR);
 
-        // Primero creamos un mapa que relacione acciones con colores
-        Map<String, Color> actionColorMap = new HashMap<>();
-        actionColorMap.put("Atacar", new Color(220, 60, 60));
-        actionColorMap.put("Esquivar", new Color(60, 180, 60));
-        actionColorMap.put("Defender", new Color(60, 60, 180));
-        actionColorMap.put("Curarse", new Color(180, 60, 180));
-        actionColorMap.put("Acción especial", ACCENT_COLOR);
-
-// Luego iteramos
-        for (String action : actions) {
-            JButton button = createActionButton(action, actionColorMap.get(action));
-            button.addActionListener(e -> {
-                game.processPlayerAction(action);
-                enableNewBattleButton(false);
-            });
-            actionButtons.put(action, button);
-            actionPanel.add(button);
+    for (String action : actionColorMap.keySet()) {
+        JButton button = createActionButton(action, actionColorMap.get(action));
+        
+        switch(action) {
+            case "Atacar":
+                button.setToolTipText("<html>Ataque básico<br>Reduce 15% defensa<br>Aumenta 10% velocidad</html>");
+                break;
+            case "Acción especial":
+                button.setToolTipText("<html>Ataque especial<br>Reduce 40% defensa<br>Reduce 20% velocidad</html>");
+                break;
+            case "Esquivar":
+                button.setToolTipText("Aumenta tu velocidad para esquivar ataques");
+                break;
+            case "Defender":
+                button.setToolTipText("Aumenta tu defensa para reducir daño recibido");
+                break;
+            case "Curarse":
+                button.setToolTipText("Usa una poción para recuperar salud");
         }
-
-        JPanel menuPanel = new JPanel(new GridLayout(0, 1, 0, 15));
-        menuPanel.setBackground(DARK_COLOR);
-        menuPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
-
-        newBattleButton = createStyledButton("Nueva Batalla");
-        newBattleButton.addActionListener(e -> startNewBattle());
-        newBattleButton.setEnabled(false);
-
-        JButton inventoryButton = createStyledButton("Inventario");
-        inventoryButton.addActionListener(e -> showInventory());
-
-        JButton statsButton = createStyledButton("Estadísticas");
-        statsButton.addActionListener(e -> showStats());
-
-        JButton saveButton = createStyledButton("Guardar");
-        saveButton.addActionListener(e -> {
-            try {
-                game.saveGame();
-            } catch (Exception ex) {
-                showError("Error al guardar", ex);
-            }
+        
+        button.addActionListener(e -> {
+            game.processPlayerAction(action);
+            enableNewBattleButton(false);
         });
-
-        JButton backButton = createStyledButton("Salir");
-        backButton.addActionListener(e -> {
-            if (game.infiniteMode) {
-                showInfiniteMenu();
-            } else {
-                showCampaignMenu();
-            }
-        });
-
-        menuPanel.add(newBattleButton);
-        menuPanel.add(inventoryButton);
-        menuPanel.add(statsButton);
-        menuPanel.add(saveButton);
-        menuPanel.add(backButton);
-
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.add(actionPanel, BorderLayout.NORTH);
-        rightPanel.add(menuPanel, BorderLayout.SOUTH);
-        rightPanel.setBackground(DARK_COLOR);
-
-        battlePanel.add(scrollPane, BorderLayout.CENTER);
-        battlePanel.add(rightPanel, BorderLayout.EAST);
+        actionButtons.put(action, button);
+        actionPanel.add(button);
     }
+
+    JPanel menuPanel = new JPanel(new GridLayout(0, 1, 0, 15));
+    menuPanel.setBackground(DARK_COLOR);
+    menuPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 20));
+
+    newBattleButton = createStyledButton("Nueva Batalla");
+    newBattleButton.addActionListener(e -> {
+        try {
+            // Deshabilitar el botón de nueva batalla al iniciar
+            enableNewBattleButton(false);
+            // Habilitar los botones de acción
+            enableBattleButtons(true);
+            // Iniciar la nueva batalla
+            game.startBattle(game.infiniteMode ? game.currentWave : (int) game.player.getLevel());
+        } catch (Exception ex) {
+            showError("Error al iniciar batalla", ex);
+        }
+    });
+    newBattleButton.setEnabled(false);
+
+    JButton inventoryButton = createStyledButton("Inventario");
+    inventoryButton.addActionListener(e -> showInventory());
+
+    JButton statsButton = createStyledButton("Estadísticas");
+    statsButton.addActionListener(e -> showStats());
+
+    shopButton = createStyledButton("Tienda");
+    shopButton.addActionListener(e -> game.openShop());
+
+    JButton historyButton = createStyledButton("Historial PDF");
+    historyButton.addActionListener(e -> game.generateBattleHistoryPDF());
+
+    JButton saveButton = createStyledButton("Guardar");
+    saveButton.addActionListener(e -> {
+        try {
+            game.saveGame();
+        } catch (Exception ex) {
+            showError("Error al guardar", ex);
+        }
+    });
+
+    JButton backButton = createStyledButton("Salir");
+    backButton.addActionListener(e -> {
+        if (game.infiniteMode) {
+            showInfiniteMenu();
+        } else {
+            showCampaignMenu();
+        }
+    });
+
+    menuPanel.add(newBattleButton);
+    menuPanel.add(inventoryButton);
+    menuPanel.add(statsButton);
+    menuPanel.add(shopButton);
+    menuPanel.add(historyButton);
+    menuPanel.add(saveButton);
+    menuPanel.add(backButton);
+
+    JPanel rightPanel = new JPanel(new BorderLayout());
+    rightPanel.add(actionPanel, BorderLayout.NORTH);
+    rightPanel.add(menuPanel, BorderLayout.SOUTH);
+    rightPanel.setBackground(DARK_COLOR);
+
+    battlePanel.add(scrollPane, BorderLayout.CENTER);
+    battlePanel.add(rightPanel, BorderLayout.EAST);
+}
 
     private void startNewBattle() {
         try {
@@ -619,7 +652,6 @@ public class GameGUI {
                             game.player.live += item.healAmount;
                             game.player.getItems().remove(index);
                             updatePlayerStats();
-                            // Actualizar base de datos
                             game.removeItemFromInventory(game.player.getId(), item.id);
                         }
                         updateInventory(inventoryTextArea);
@@ -656,10 +688,15 @@ public class GameGUI {
             } else {
                 int i = 1;
                 for (Item item : game.player.getItems()) {
-                    textArea.append(i++ + ". " + item.name + " (" + item.type + ")\n");
-                    if (item.type == Item.ItemType.POTION) {
-                        textArea.append("   - Curación: " + item.healAmount + " HP\n");
-                    }
+                    textArea.append(i++ + ". " + item.name + " (" + item.type.getDisplayName() + ")\n");
+                    
+                    if (item.attackBonus != 0) textArea.append("   - Ataque: " + (item.attackBonus > 0 ? "+" : "") + item.attackBonus + "\n");
+                    if (item.defendBonus != 0) textArea.append("   - Defensa: " + (item.defendBonus > 0 ? "+" : "") + item.defendBonus + "\n");
+                    if (item.speedBonus != 0) textArea.append("   - Velocidad: " + (item.speedBonus > 0 ? "+" : "") + item.speedBonus + "\n");
+                    if (item.healAmount != 0) textArea.append("   - Curación: " + item.healAmount + " HP\n");
+                    if (item.manaRestore != 0) textArea.append("   - Maná: " + item.manaRestore + "\n");
+                    
+                    textArea.append("   - Rareza: " + item.rarity.getDisplayName() + "\n");
                 }
             }
         }
@@ -698,7 +735,6 @@ public class GameGUI {
             textArea.append("Defensa: " + game.player.getDefend() + "\n");
             textArea.append("Velocidad: " + game.player.getSpeed() + "\n");
 
-            // Estadísticas específicas de clase
             if (game.player instanceof SWORDSMAN) {
                 textArea.append("\nProb. Golpe Crítico: " + ((SWORDSMAN) game.player).getCriticalStrikeChance() + "%\n");
             } else if (game.player instanceof Archer) {
@@ -708,6 +744,75 @@ public class GameGUI {
                 textArea.append("\nPoder de Hechizo: " + String.format("%.1f", ((Wizard) game.player).getSpellPower()) + "\n");
             }
         }
+    }
+
+    private void createShopPanel() {
+        shopFrame = new JFrame("Tienda");
+        shopFrame.setSize(800, 600);
+        shopFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        shopFrame.setLayout(new BorderLayout());
+        shopFrame.setLocationRelativeTo(mainFrame);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(DARK_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        JLabel titleLabel = new JLabel("TIENDA", SwingConstants.CENTER);
+        titleLabel.setFont(titleFont);
+        titleLabel.setForeground(ACCENT_COLOR);
+        mainPanel.add(titleLabel, BorderLayout.NORTH);
+
+        shopTextArea = new JTextArea();
+        setupTextArea(shopTextArea);
+        JScrollPane scrollPane = new JScrollPane(shopTextArea);
+
+        JPanel buttonPanel = new JPanel(new GridLayout(0, 1, 10, 10));
+        buttonPanel.setBackground(DARK_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        for (int i = 0; i < 5; i++) {
+            JButton buyButton = createStyledButton("Comprar Item " + (i+1));
+            final int index = i;
+            buyButton.addActionListener(e -> game.buyItem(index));
+            buttonPanel.add(buyButton);
+        }
+
+        JButton exitButton = createStyledButton("Salir");
+        exitButton.addActionListener(e -> shopFrame.dispose());
+
+        buttonPanel.add(exitButton);
+
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.EAST);
+
+        shopFrame.add(mainPanel);
+    }
+
+    public void updateShopDisplay(List<Item> items) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("════════ TIENDA ════════\n\n");
+        sb.append("Dinero disponible: ").append(game.player.getMoney()).append(" monedas\n\n");
+        sb.append("Items disponibles:\n");
+
+        for (int i = 0; i < items.size(); i++) {
+            Item item = items.get(i);
+            sb.append(i + 1).append(". ").append(item.name).append(" - ").append((int)item.baseValue).append(" monedas\n");
+            sb.append("   - Tipo: ").append(item.type.getDisplayName()).append("\n");
+            
+            if (item.attackBonus > 0) sb.append("   - Ataque: +").append(item.attackBonus).append("\n");
+            if (item.defendBonus > 0) sb.append("   - Defensa: +").append(item.defendBonus).append("\n");
+            if (item.speedBonus > 0) sb.append("   - Velocidad: +").append(item.speedBonus).append("\n");
+            if (item.healAmount > 0) sb.append("   - Curación: +").append(item.healAmount).append(" HP\n");
+            
+            sb.append("   - Rareza: ").append(item.rarity.getDisplayName()).append("\n\n");
+        }
+
+        shopTextArea.setText(sb.toString());
+    }
+
+    public void showShop() {
+        shopFrame.setVisible(true);
+        shopFrame.toFront();
     }
 
     public void appendToTextArea(String text) {
@@ -724,8 +829,42 @@ public class GameGUI {
                         game.player.getLive(), game.player.getAttack(),
                         game.player.getDefend(), game.player.getSpeed());
                 playerStatsLabel.setText(stats);
+                
+                JButton specialButton = actionButtons.get("Acción especial");
+                if (specialButton != null) {
+                    specialButton.setToolTipText(String.format(
+                        "<html>Ataque especial<br>Reduce %.1f defensa (40%%)<br>Reduce %.1f velocidad (20%%)</html>",
+                        game.player.getDefend() * 0.40,
+                        game.player.getSpeed() * 0.20
+                    ));
+                }
+                
+                JButton attackButton = actionButtons.get("Atacar");
+                if (attackButton != null) {
+                    attackButton.setToolTipText(String.format(
+                        "<html>Ataque básico<br>Reduce %.1f defensa (15%%)<br>Aumenta %.1f velocidad (10%%)</html>",
+                        game.player.getDefend() * 0.15,
+                        game.player.getSpeed() * 0.10
+                    ));
+                }
+                
+                WeatherAPI.WeatherData weather = WeatherAPI.getCurrentWeather();
+                String weatherEffects = getWeatherEffectsDescription(weather);
+                weatherLabel.setText(" Clima: " + weather.description + " (" + weather.temperature + "°C) - " + weatherEffects);
             }
         });
+    }
+
+    private String getWeatherEffectsDescription(WeatherAPI.WeatherData weather) {
+        switch (weather.condition) {
+            case SUNNY: return "ATQ↑ SPD↑";
+            case RAINY: return "SPD↓ DEF↑";
+            case STORMY: return "ATQ↓ DEF↑";
+            case SNOWY: return "SPD↓ DEF↑";
+            case FOGGY: return "SPD↓";
+            case WINDY: return "SPD↑ DEF↓";
+            default: return "";
+        }
     }
 
     public void updateHealthBars(double playerHealth, double playerMaxHealth,
@@ -738,7 +877,7 @@ public class GameGUI {
 
     public void updateWeatherInfo(WeatherAPI.WeatherData weather) {
         SwingUtilities.invokeLater(() -> {
-            weatherLabel.setText(" Clima: " + weather.description + " (" + weather.temperature + "°C) ");
+            weatherLabel.setText(" Clima: " + weather.description + " (" + weather.temperature + "°C)");
         });
     }
 
@@ -754,10 +893,18 @@ public class GameGUI {
     }
 
     public void enableNewBattleButton(boolean enabled) {
+    SwingUtilities.invokeLater(() -> {
+        newBattleButton.setEnabled(enabled);
+        newBattleButton.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
+        newBattleButton.setForeground(enabled ? Color.BLACK : Color.WHITE);
+    });
+} 
+
+    public void setShopButtonEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
-            newBattleButton.setEnabled(enabled);
-            newBattleButton.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
-            newBattleButton.setForeground(enabled ? Color.BLACK : Color.WHITE);
+            shopButton.setEnabled(enabled);
+            shopButton.setBackground(enabled ? PRIMARY_COLOR : Color.GRAY);
+            shopButton.setForeground(enabled ? Color.BLACK : Color.WHITE);
         });
     }
 
@@ -767,7 +914,7 @@ public class GameGUI {
         });
     }
 
-    private void showError(String title, Exception ex) {
+    public void showError(String title, Exception ex) {
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(mainFrame,
                     title + ": " + ex.getMessage(),
@@ -812,6 +959,7 @@ public class GameGUI {
             if (!game.inBattle) {
                 enableNewBattleButton(true);
                 enableBattleButtons(false);
+                setShopButtonEnabled(true);
             }
             updatePlayerStats();
         });
