@@ -10,7 +10,7 @@ import java.sql.Timestamp;
  *
  * @author liber
  */
-public class PlayerInfo {
+public class PlayerInfo  {
         public final int id;
         public final String name;
         public final String characterClass;
@@ -46,4 +46,6 @@ public class PlayerInfo {
                 default: return characterClass;
             }
         }
+
+   
     }
